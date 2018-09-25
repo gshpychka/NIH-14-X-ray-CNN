@@ -3,11 +3,50 @@ import cv2
 import h5py
 import datetime as dt
 import os
-import matplotlib as pd
+import matplotlib.pyplot as plt
+import pandas as pd
 import numpy as np
 
+def get_findings_list():
+    return [
+        'Cardiomegaly',
+        'Emphysema',
+        'Effusion',
+        'Hernia',
+        'Nodule',
+        'Pneumothorax',
+        'Atelectasis',
+        'Pleural_Thickening',
+        'Mass',
+        'Edema',
+        'Consolidation',
+        'Infiltration',
+        'Fibrosis',
+        'Pneumonia']
 
-def preprocess_dataset_in_chunks(dataset_old = h5py.File('data.h5', 'r')):
+def load_labels_into_df():
+    return pd.read_csv("data/labels.csv")
+
+def preprocess_labels():
+    age_range = range(18, 95)
+
+    labels = load_labels_into_df()
+
+    # Only non-adults and weird values
+    labels = labels[labels['Patient Age'].isin(age_range)]
+    # Keep only the relevant columns
+    labels = labels[['Image Index', 'Finding Labels', 'Patient ID', 'Patient Age', 'Patient Gender']]
+
+    findings_list = get_findings_list()
+
+    # One-hot encoding
+    for finding in findings_list:
+        labels[finding] = labels['Finding Labels'].apply(lambda x: 1 if finding in x else 0)
+    labels['No Finding'] = labels['Finding Labels'].apply(lambda x: 1 if 'No Finding' in x else 0)
+    return labels
+
+
+def preprocess_dataset_in_chunks(dataset_old = h5py.File('data/data.h5', 'r')):
 
     labels = pd.read_csv('labels.csv')
     chunk = 1000;

@@ -11,51 +11,11 @@ import seaborn as sns
 sns.set()
 import datetime as dt
 import os
-
-
-#%%
-
-def load_labels_into_df():
-    return pd.read_csv("data/labels.csv")
+import preprocessing
 
 #%%
-
-
-labels = load_labels_into_df()
-labels = labels[labels['Patient Age'].isin(range(18, 95))]
-labels = labels[['Image Index', 'Finding Labels', 'Patient ID', 'Patient Age', 'Patient Gender']]
-
-#%%
-
-labels.head()
-
-#%%
-
-findings_list = [
-    'Cardiomegaly',
-    'Emphysema',
-    'Effusion',
-    'Hernia',
-    'Nodule',
-    'Pneumothorax',
-    'Atelectasis',
-    'Pleural_Thickening',
-    'Mass',
-    'Edema',
-    'Consolidation',
-    'Infiltration',
-    'Fibrosis',
-    'Pneumonia']
-
-# One-hot encoding
-for finding in findings_list:
-    labels[finding] = labels['Finding Labels'].apply(lambda x: 1 if finding in x else 0)
-
-
-#%%
-
-# Some disturbing outliers
-labels['Patient Age'].sort_values(ascending=False).head(20)
+labels = preprocessing.preprocess_labels()
+findings_list = preprocessing.get_findings_list()
 
 #%%
 
@@ -74,8 +34,6 @@ g=sns.countplot(y='Finding',hue='Patient Gender',data=data1, ax=ax1, order = dat
 ax1.set( ylabel="",xlabel="")
 ax1.legend(fontsize=20)
 ax1.set_title('Findings per gender',fontsize=18);
-
-labels['No Finding']=labels['Finding Labels'].apply(lambda x: 1 if 'No Finding' in x else 0)
 
 data2 = pd.melt(labels,
              id_vars=['Patient Gender'],
@@ -122,3 +80,13 @@ for label in findings_list + ['No Finding']:
     ax1.set_title(label, fontsize=18)
     #plt.show()
     plt.savefig('plots/' + label + '_age_distribution_plot.png', format='png')
+
+#%%
+# Correlation matrix
+labels_for_corr = labels[['Patient Age', 'Patient Gender'] + findings_list]
+labels_for_corr = pd.get_dummies(labels_for_corr, columns=['Patient Gender'])
+
+x = labels_for_corr['Patient Age']
+labels_for_corr['Patient Age'] = (x - x.min())/(x.max() - x.min())
+
+corr = labels_for_corr.corr()
