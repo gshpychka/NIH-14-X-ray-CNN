@@ -24,36 +24,40 @@ def get_findings_list():
         'Fibrosis',
         'Pneumonia']
 
-def load_labels_into_df():
-    return pd.read_csv("data/labels.csv")
+def load_labels_into_df(shuffle=False):
+    labels = pd.read_csv("data/labels.csv")
+    if shuffle:
+        return labels.sample(frac=1).reset_index(drop=True)
+    else:
+        return labels
 
-def preprocess_labels():
+def preprocess_labels(shuffle=False):
     age_range = range(18, 95)
 
-    labels = load_labels_into_df()
+    labels_df = load_labels_into_df(shuffle)
 
-    # Only non-adults and weird values
-    labels = labels[labels['Patient Age'].isin(age_range)]
+    # Drop non-adults and weird values
+    labels_df = labels_df[labels_df['Patient Age'].isin(age_range)]
     # Keep only the relevant columns
-    labels = labels[['Image Index', 'Finding Labels', 'Patient ID', 'Patient Age', 'Patient Gender']]
+    labels_df = labels_df[['Image Index', 'Finding Labels', 'Patient ID', 'Patient Age', 'Patient Gender']]
 
     findings_list = get_findings_list()
 
     # One-hot encoding
     for finding in findings_list:
-        labels[finding] = labels['Finding Labels'].apply(lambda x: 1 if finding in x else 0)
-    labels['No Finding'] = labels['Finding Labels'].apply(lambda x: 1 if 'No Finding' in x else 0)
-    labels['Any Finding'] = labels['Finding Labels'].apply(lambda x: 0 if 'No Finding' in x else 1)
+        labels_df[finding] = labels_df['Finding Labels'].apply(lambda x: 1 if finding in x else 0)
+    labels_df['No Finding'] = labels_df['Finding Labels'].apply(lambda x: 1 if 'No Finding' in x else 0)
+    labels_df['Any Finding'] = labels_df['Finding Labels'].apply(lambda x: 0 if 'No Finding' in x else 1)
 
-    labels = labels.reset_index(drop=True)
-    return labels
+    labels_df = labels_df.reset_index(drop=True)
+    return labels_df
 
 labels = preprocess_labels()
 
-def store_labels_hdf5(file = None, mode='a'):
+
+def store_labels_hdf5(labels=labels, file = None, mode='a'):
     if file is None:
         file = h5py.File(os.path.abspath('data/data_new.h5'), mode)
-
     label_group = file.require_group('labels')
     # storing numerical labels
     numerical_labels = ['Patient ID', 'Patient Age', 'No Finding', 'Any Finding'] + get_findings_list()
@@ -72,7 +76,7 @@ def store_labels_hdf5(file = None, mode='a'):
     file.close()
 
 
-def conv_multiple_dsets_to_one(file_old=None, file_new=None, mode='a', limit=float('inf'), chunk=1000):
+def conv_multiple_dsets_to_one(file_old=None, file_new=None, mode='a', limit=float('inf'), chunk=2000, dset_chunks=(1, 224, 224, 1), compression='gzip'):
     start = dt.datetime.now()
     if file_old is None:
         file_old = h5py.File(os.path.abspath('data/data.h5'), 'r')
@@ -83,26 +87,26 @@ def conv_multiple_dsets_to_one(file_old=None, file_new=None, mode='a', limit=flo
     Xset = file_new.require_dataset(
         name='X',
         data=None,
-        shape=(len(labels),224,224),
-        maxshape=(None, 224, 224),
-        chunks=True,
-        compression='gzip',
+        shape=(len(file_new['labels']['Image Index']),224,224, 1),
+        maxshape=(len(file_new['labels']['Image Index']), 224, 224, 1),
+        chunks=dset_chunks,
+        compression=compression,
         compression_opts=9,
         dtype='<f4'
     )
 
-    for k in range(0, int(len(labels) / chunk)):
+    for k in range(0, int(len(file_new['labels']['Image Index']) / chunk)):
         if k * chunk > limit:
             break
         X = np.empty((chunk, 224, 224))
         for i in range(0, chunk):
             img_num = chunk * k + i
-            if img_num > len(labels) or img_num > limit:
+            if img_num > len(file_new['labels']['Image Index']) or img_num > limit:
                 break
-            X[i] = file_old[labels['Image Index'][img_num]][:]
+            X[i] = file_old[file_new['labels']['Image Index'][img_num]][:]
             print("Transferred image %d into array." % img_num)
         print("Recording to indices %d to %d" % ((k*chunk), (k+1)*chunk))
-        Xset[k*chunk:(k+1)*chunk] = X
+        Xset[k*chunk:(k+1)*chunk] = X[..., np.newaxis]
     end = dt.datetime.now()
     print("Done, in %s, yo." % (end - start))
     file_old.close()
