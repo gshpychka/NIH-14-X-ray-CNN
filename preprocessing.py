@@ -48,7 +48,10 @@ def preprocess_labels():
 
 labels = preprocess_labels()
 
-def store_labels_hdf5(file = h5py.File(os.path.abspath('data/data_new.h5'), 'w')):
+def store_labels_hdf5(file = None):
+    if file is None:
+        file = h5py.File(os.path.abspath('data/data_new.h5'), 'w')
+
     label_group = file.create_group('labels')
     # storing numerical labels
     numerical_labels = ['Patient ID', 'Patient Age', 'No Finding', 'Any Finding'] + get_findings_list()
@@ -68,14 +71,21 @@ def store_labels_hdf5(file = h5py.File(os.path.abspath('data/data_new.h5'), 'w')
     file.close()
 
 
-def preprocess_images_into_dataset_in_chunks(file_old = h5py.File(os.path.abspath('data/data.h5'), 'r'), file_new=h5py.File(os.path.abspath('data/data_new.h5'), 'w')):
+def conv_multiple_dsets_to_one(file_old=None, file_new=None):
+    if file_old is None:
+        file_old = h5py.File(os.path.abspath('data/data.h5'), 'r')
+
+    if file_new is None:
+        file_new = h5py.File(os.path.abspath('data/data_new.h5'), 'w')
+
+
     chunk = 1000;
     start = dt.datetime.now()
 
     Xset = file_new.create_dataset(
         name='X',
         data=None,
-        shape=(0,224,224),
+        shape=(len(labels),224,224),
         maxshape=(None, 224, 224),
         chunks=None,
         compression='gzip',
@@ -86,17 +96,19 @@ def preprocess_images_into_dataset_in_chunks(file_old = h5py.File(os.path.abspat
         X = np.empty((chunk, 224, 224))
         for i in range(0, chunk):
             img_num = chunk * k + i
-            X[i] = file_old[labels['Image Index'][img_num]]
+            X[i] = file_old[labels['Image Index'][i]][:]
             print("Transferred image %d into array." % img_num)
-        Xset.resize(Xset.shape[0] + chunk, axis=0)
-        Xset[-chunk:] = X
+        Xset[k*chunk:] = X
     end = dt.datetime.now()
     print("Done, in %s, yo." % (end - start))
     file_old.close()
     file_new.close()
 
 
-def preprocess_images_into_separate_datasets(file = h5py.File(os.path.abspath('data/data.h5'), 'w')):
+def preprocess_images_into_separate_datasets(file=None):
+    if file is None:
+        file =  h5py.File(os.path.abspath('data/data.h5'), 'w')
+
     start = dt.datetime.now()
     PATH = os.path.abspath('../NIHChestXrayDataset')
 
