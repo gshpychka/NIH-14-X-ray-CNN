@@ -43,6 +43,7 @@ def preprocess_labels():
     for finding in findings_list:
         labels[finding] = labels['Finding Labels'].apply(lambda x: 1 if finding in x else 0)
     labels['No Finding'] = labels['Finding Labels'].apply(lambda x: 1 if 'No Finding' in x else 0)
+    labels['Any Finding'] = labels['Finding Labels'].apply(lambda x: 0 if 'No Finding' in x else 1)
     return labels
 
 
