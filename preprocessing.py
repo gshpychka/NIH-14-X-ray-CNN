@@ -44,15 +44,17 @@ def preprocess_labels():
         labels[finding] = labels['Finding Labels'].apply(lambda x: 1 if finding in x else 0)
     labels['No Finding'] = labels['Finding Labels'].apply(lambda x: 1 if 'No Finding' in x else 0)
     labels['Any Finding'] = labels['Finding Labels'].apply(lambda x: 0 if 'No Finding' in x else 1)
+
+    labels = labels.reset_index(drop=True)
     return labels
 
 labels = preprocess_labels()
 
-def store_labels_hdf5(file = None):
+def store_labels_hdf5(file = None, mode='a'):
     if file is None:
-        file = h5py.File(os.path.abspath('data/data_new.h5'), 'w')
+        file = h5py.File(os.path.abspath('data/data_new.h5'), mode)
 
-    label_group = file.create_group('labels')
+    label_group = file.require_group('labels')
     # storing numerical labels
     numerical_labels = ['Patient ID', 'Patient Age', 'No Finding', 'Any Finding'] + get_findings_list()
     for label in numerical_labels:
@@ -62,43 +64,45 @@ def store_labels_hdf5(file = None):
             shape=labels[label].shape,
         )
     # storing string labels
-    string_labels = ['Image Index', 'Patient Gender']
+    string_labels = ['Image Index', 'Finding Labels', 'Patient Gender']
     for label in string_labels:
         string_dt = h5py.special_dtype(vlen=str)
         data = np.asarray(labels[label], dtype=object)
         label_group.create_dataset(label, data=data, dtype=string_dt)
-
     file.close()
 
 
-def conv_multiple_dsets_to_one(file_old=None, file_new=None):
+def conv_multiple_dsets_to_one(file_old=None, file_new=None, mode='a', limit=float('inf'), chunk=1000):
+    start = dt.datetime.now()
     if file_old is None:
         file_old = h5py.File(os.path.abspath('data/data.h5'), 'r')
 
     if file_new is None:
-        file_new = h5py.File(os.path.abspath('data/data_new.h5'), 'w')
+        file_new = h5py.File(os.path.abspath('data/data_new.h5'), mode)
 
-
-    chunk = 1000;
-    start = dt.datetime.now()
-
-    Xset = file_new.create_dataset(
+    Xset = file_new.require_dataset(
         name='X',
         data=None,
         shape=(len(labels),224,224),
         maxshape=(None, 224, 224),
-        chunks=None,
+        chunks=True,
         compression='gzip',
-        compression_opts=9
+        compression_opts=9,
+        dtype='<f4'
     )
 
     for k in range(0, int(len(labels) / chunk)):
+        if k * chunk > limit:
+            break
         X = np.empty((chunk, 224, 224))
         for i in range(0, chunk):
             img_num = chunk * k + i
-            X[i] = file_old[labels['Image Index'][i]][:]
+            if img_num > len(labels) or img_num > limit:
+                break
+            X[i] = file_old[labels['Image Index'][img_num]][:]
             print("Transferred image %d into array." % img_num)
-        Xset[k*chunk:] = X
+        print("Recording to indices %d to %d" % ((k*chunk), (k+1)*chunk))
+        Xset[k*chunk:(k+1)*chunk] = X
     end = dt.datetime.now()
     print("Done, in %s, yo." % (end - start))
     file_old.close()
@@ -107,7 +111,7 @@ def conv_multiple_dsets_to_one(file_old=None, file_new=None):
 
 def preprocess_images_into_separate_datasets(file=None):
     if file is None:
-        file =  h5py.File(os.path.abspath('data/data.h5'), 'w')
+        file =  h5py.File(os.path.abspath('data/data.h5'), 'a')
 
     start = dt.datetime.now()
     PATH = os.path.abspath('../NIHChestXrayDataset')
@@ -141,11 +145,11 @@ def preprocess_images_into_separate_datasets(file=None):
 
 
 
-def test(filename='data.h5', num=5):
+def test(filename='data/data_new.h5', num=5):
     file = h5py.File(filename, 'r')
     labels = file.require_group('labels')
     image_index = labels['Image Index'][num]
-    image = np.array(file[image_index])
+    image = np.array(file['X'][num])
 
     print("Image shape: " + str(image.shape))
     cv2.imwrite(str(labels['Image Index'][num]), image)
@@ -155,6 +159,7 @@ def test(filename='data.h5', num=5):
         labels['Patient Age'][num],
         labels['Finding Labels'][num]))
     print('Saved image downscaled from ' + labels['Image Index'][num])
-    os.system('cp data/%s %s-original.png' % (
+    os.system('cp ../NIHChestXrayDataset/%s %s-original.png' % (
         image_index,
         image_index))
+    file.close()
