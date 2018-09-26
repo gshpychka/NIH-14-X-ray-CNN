@@ -4,8 +4,10 @@ from tensorflow.python.keras.layers import GlobalAveragePooling2D
 from tensorflow.python.keras.layers import GlobalMaxPooling2D
 from tensorflow.python.keras.layers import Input, Dropout, Dense
 from tensorflow.python.keras.models import Model
-from metrics import my_f1
-def get_model(alpha=1, depth_multiplier=1, pooling='max'):
+from tensorflow.keras.optimizers import Adam
+import keras_metrics
+
+def get_model(alpha=1, depth_multiplier=1, pooling='avg'):
 
     img_input = Input(shape=(224, 224, 1))
     x = _conv_block(img_input, 32, alpha, strides=(2, 2))
@@ -44,8 +46,8 @@ def get_model(alpha=1, depth_multiplier=1, pooling='max'):
 
     # Create model.
     model = Model(img_input, x, name='mobilenet_%0.2f_%s' % (alpha, 224))
-
-    model.compile(optimizer='adam', loss='binary_crossentropy',
-                  metrics=[my_f1])
+    optimizer = Adam(lr=0.00001)
+    model.compile(optimizer=optimizer, loss='binary_crossentropy',
+                  metrics=[keras_metrics.precision(), keras_metrics.recall(), keras_metrics.f1_score()])
 
     return model
