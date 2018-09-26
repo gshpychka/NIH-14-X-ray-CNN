@@ -1,16 +1,9 @@
 #%%
 
-import h5py
-import numpy as np
 import pandas as pd
-import cv2
 import matplotlib.pyplot as plt
-import matplotlib.gridspec as gridspec
-import matplotlib.ticker as ticker
 import seaborn as sns
 sns.set()
-import datetime as dt
-import os
 import preprocessing
 
 #%%
