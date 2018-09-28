@@ -56,7 +56,7 @@ def train_model(model, X_train, y_train, X_test, y_test, keras_datagen, epochs=1
                         shuffle=False)
 
 if __name__ == '__main__':
-    model = get_model(l2_reg=0.001, lr=0.001)
+    model = get_model(reg=0.0001, lr=0.005)
     keras_datagen = ImageDataGenerator(
         featurewise_center=True,
         featurewise_std_normalization=True
@@ -67,7 +67,6 @@ if __name__ == '__main__':
     print("Done.")
     X_train, y_train, X_test, y_test = load_data(0, )
     history = train_model(model, X_train, y_train, X_test, y_test, keras_datagen,
-                          batch_size=13,
-                          epochs=5,
-                          steps_per_epoch=1000,
+                          batch_size=12,
+                          epochs=5
                           )

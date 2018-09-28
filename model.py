@@ -14,31 +14,31 @@ import my_losses
 
 
 
-def get_model(alpha=1, depth_multiplier=1, pooling='avg', l2_reg=0, lr = 0.00001):
+def get_model(alpha=1, depth_multiplier=1, pooling='avg', reg=0, lr = 0.00001):
 
     img_input = Input(shape=(224, 224, 1))
-    x = _conv_block(img_input, 32, alpha, strides=(2, 2), l2_reg=l2_reg)
-    x = _depthwise_conv_block(x, 64, alpha, depth_multiplier, block_id=1, l2_reg=l2_reg)
+    x = _conv_block(img_input, 32, alpha, strides=(2, 2), reg=reg)
+    x = _depthwise_conv_block(x, 64, alpha, depth_multiplier, block_id=1, reg=reg)
 
     x = _depthwise_conv_block(
-        x, 128, alpha, depth_multiplier, strides=(2, 2), block_id=2, l2_reg=l2_reg)
-    x = _depthwise_conv_block(x, 128, alpha, depth_multiplier, block_id=3, l2_reg=l2_reg)
+        x, 128, alpha, depth_multiplier, strides=(2, 2), block_id=2, reg=reg)
+    x = _depthwise_conv_block(x, 128, alpha, depth_multiplier, block_id=3, reg=reg)
 
     x = _depthwise_conv_block(
-        x, 256, alpha, depth_multiplier, strides=(2, 2), block_id=4, l2_reg=l2_reg)
-    x = _depthwise_conv_block(x, 256, alpha, depth_multiplier, block_id=5, l2_reg=l2_reg)
+        x, 256, alpha, depth_multiplier, strides=(2, 2), block_id=4, reg=reg)
+    x = _depthwise_conv_block(x, 256, alpha, depth_multiplier, block_id=5, reg=reg)
 
     x = _depthwise_conv_block(
-        x, 512, alpha, depth_multiplier, strides=(2, 2), block_id=6, l2_reg=l2_reg)
-    x = _depthwise_conv_block(x, 512, alpha, depth_multiplier, block_id=7, l2_reg=l2_reg)
-    x = _depthwise_conv_block(x, 512, alpha, depth_multiplier, block_id=8, l2_reg=l2_reg)
-    x = _depthwise_conv_block(x, 512, alpha, depth_multiplier, block_id=9, l2_reg=l2_reg)
-    x = _depthwise_conv_block(x, 512, alpha, depth_multiplier, block_id=10, l2_reg=l2_reg)
-    x = _depthwise_conv_block(x, 512, alpha, depth_multiplier, block_id=11, l2_reg=l2_reg)
+        x, 512, alpha, depth_multiplier, strides=(2, 2), block_id=6, reg=reg)
+    x = _depthwise_conv_block(x, 512, alpha, depth_multiplier, block_id=7, reg=reg)
+    x = _depthwise_conv_block(x, 512, alpha, depth_multiplier, block_id=8, reg=reg)
+    x = _depthwise_conv_block(x, 512, alpha, depth_multiplier, block_id=9, reg=reg)
+    x = _depthwise_conv_block(x, 512, alpha, depth_multiplier, block_id=10, reg=reg)
+    x = _depthwise_conv_block(x, 512, alpha, depth_multiplier, block_id=11, reg=reg)
 
     x = _depthwise_conv_block(
-        x, 1024, alpha, depth_multiplier, strides=(2, 2), block_id=12, l2_reg=l2_reg)
-    x = _depthwise_conv_block(x, 1024, alpha, depth_multiplier, block_id=13, l2_reg=l2_reg)
+        x, 1024, alpha, depth_multiplier, strides=(2, 2), block_id=12, reg=reg)
+    x = _depthwise_conv_block(x, 1024, alpha, depth_multiplier, block_id=13, reg=reg)
 
     if pooling == 'avg':
         x = GlobalAveragePooling2D()(x)

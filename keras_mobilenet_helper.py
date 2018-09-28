@@ -5,9 +5,9 @@ from tensorflow.python.keras.layers import Conv2D
 from tensorflow.python.keras.layers import DepthwiseConv2D
 from tensorflow.python.keras.layers import ReLU
 from tensorflow.python.keras.layers import ZeroPadding2D
-from tensorflow.keras.regularizers import l2, l1
+from tensorflow.keras.regularizers import l2, l1, l1_l2
 
-def _conv_block(inputs, filters, alpha, kernel=(3, 3), strides=(1, 1), l2_reg=0):
+def _conv_block(inputs, filters, alpha, kernel=(3, 3), strides=(1, 1), reg=0):
   """Adds an initial convolution layer (with batch normalization and relu6).
   Arguments:
       inputs: Input tensor of shape `(rows, cols, 3)`
@@ -50,7 +50,7 @@ def _conv_block(inputs, filters, alpha, kernel=(3, 3), strides=(1, 1), l2_reg=0)
       Output tensor of block.
   """
 
-  reg = l2(l2_reg)
+  reg = l1_l2(reg)
   bias_reg = l1()
   channel_axis = -1
   filters = int(filters * alpha)
@@ -74,7 +74,7 @@ def _depthwise_conv_block(inputs,
                           depth_multiplier=1,
                           strides=(1, 1),
                           block_id=1,
-                          l2_reg=0):
+                          reg=0):
   """Adds a depthwise convolution block.
   A depthwise convolution block consists of a depthwise conv,
   batch normalization, relu6, pointwise convolution,
@@ -118,7 +118,7 @@ def _depthwise_conv_block(inputs,
       Output tensor of block.
   """
   channel_axis = -1
-  reg = l2(l2_reg)
+  reg = l1_l2(reg)
   bias_reg = l1()
   pointwise_conv_filters = int(pointwise_conv_filters * alpha)
   x = ZeroPadding2D(padding=(1, 1), name='conv_pad_%d' % block_id)(inputs)
