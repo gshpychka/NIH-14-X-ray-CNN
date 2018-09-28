@@ -5,33 +5,40 @@ from tensorflow.python.keras.layers import GlobalMaxPooling2D
 from tensorflow.python.keras.layers import Input, Dropout, Dense
 from tensorflow.python.keras.models import Model
 from tensorflow.keras.optimizers import Adam
+import tensorflow.keras.backend as K
 import keras_metrics
+import my_losses
 
-def get_model(alpha=1, depth_multiplier=1, pooling='avg'):
+
+
+
+
+
+def get_model(alpha=1, depth_multiplier=1, pooling='avg', l2_reg=0, lr = 0.00001):
 
     img_input = Input(shape=(224, 224, 1))
-    x = _conv_block(img_input, 32, alpha, strides=(2, 2))
-    x = _depthwise_conv_block(x, 64, alpha, depth_multiplier, block_id=1)
+    x = _conv_block(img_input, 32, alpha, strides=(2, 2), l2_reg=l2_reg)
+    x = _depthwise_conv_block(x, 64, alpha, depth_multiplier, block_id=1, l2_reg=l2_reg)
 
     x = _depthwise_conv_block(
-        x, 128, alpha, depth_multiplier, strides=(2, 2), block_id=2)
-    x = _depthwise_conv_block(x, 128, alpha, depth_multiplier, block_id=3)
+        x, 128, alpha, depth_multiplier, strides=(2, 2), block_id=2, l2_reg=l2_reg)
+    x = _depthwise_conv_block(x, 128, alpha, depth_multiplier, block_id=3, l2_reg=l2_reg)
 
     x = _depthwise_conv_block(
-        x, 256, alpha, depth_multiplier, strides=(2, 2), block_id=4)
-    x = _depthwise_conv_block(x, 256, alpha, depth_multiplier, block_id=5)
+        x, 256, alpha, depth_multiplier, strides=(2, 2), block_id=4, l2_reg=l2_reg)
+    x = _depthwise_conv_block(x, 256, alpha, depth_multiplier, block_id=5, l2_reg=l2_reg)
 
     x = _depthwise_conv_block(
-        x, 512, alpha, depth_multiplier, strides=(2, 2), block_id=6)
-    x = _depthwise_conv_block(x, 512, alpha, depth_multiplier, block_id=7)
-    x = _depthwise_conv_block(x, 512, alpha, depth_multiplier, block_id=8)
-    x = _depthwise_conv_block(x, 512, alpha, depth_multiplier, block_id=9)
-    x = _depthwise_conv_block(x, 512, alpha, depth_multiplier, block_id=10)
-    x = _depthwise_conv_block(x, 512, alpha, depth_multiplier, block_id=11)
+        x, 512, alpha, depth_multiplier, strides=(2, 2), block_id=6, l2_reg=l2_reg)
+    x = _depthwise_conv_block(x, 512, alpha, depth_multiplier, block_id=7, l2_reg=l2_reg)
+    x = _depthwise_conv_block(x, 512, alpha, depth_multiplier, block_id=8, l2_reg=l2_reg)
+    x = _depthwise_conv_block(x, 512, alpha, depth_multiplier, block_id=9, l2_reg=l2_reg)
+    x = _depthwise_conv_block(x, 512, alpha, depth_multiplier, block_id=10, l2_reg=l2_reg)
+    x = _depthwise_conv_block(x, 512, alpha, depth_multiplier, block_id=11, l2_reg=l2_reg)
 
     x = _depthwise_conv_block(
-        x, 1024, alpha, depth_multiplier, strides=(2, 2), block_id=12)
-    x = _depthwise_conv_block(x, 1024, alpha, depth_multiplier, block_id=13)
+        x, 1024, alpha, depth_multiplier, strides=(2, 2), block_id=12, l2_reg=l2_reg)
+    x = _depthwise_conv_block(x, 1024, alpha, depth_multiplier, block_id=13, l2_reg=l2_reg)
 
     if pooling == 'avg':
         x = GlobalAveragePooling2D()(x)
@@ -46,8 +53,9 @@ def get_model(alpha=1, depth_multiplier=1, pooling='avg'):
 
     # Create model.
     model = Model(img_input, x, name='mobilenet_%0.2f_%s' % (alpha, 224))
-    optimizer = Adam(lr=0.00001)
-    model.compile(optimizer=optimizer, loss='binary_crossentropy',
+    optimizer = Adam(lr)
+    loss = my_losses.get_weighted_binary_crossentropy(0.55, 0.45)
+    model.compile(optimizer=optimizer, loss=loss,
                   metrics=[keras_metrics.precision(), keras_metrics.recall(), keras_metrics.f1_score()])
 
     return model

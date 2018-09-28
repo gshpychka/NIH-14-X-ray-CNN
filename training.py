@@ -36,7 +36,7 @@ def my_datagen(X_train, y_train, batch_size, keras_datagen):
                 yield X_batch, y_batch
 
 
-def load_data(train_start=0, n_train=100000, test_start=100000, n_test=1000):
+def load_data(train_start=0, n_train=100000, test_start=100000, n_test=5000):
     X_train = HDF5Matrix(datapath, 'X', train_start, train_start+n_train)
     y_train = HDF5Matrix(datapath, 'labels/Any Finding', train_start, train_start+n_train)
     X_test = HDF5Matrix(datapath, 'X', test_start, test_start+n_test)
@@ -44,24 +44,30 @@ def load_data(train_start=0, n_train=100000, test_start=100000, n_test=1000):
     return X_train, y_train, X_test, y_test
 
 
-def train_model(model, X_train, y_train, X_test, y_test, keras_datagen, epochs=1, batch_size=32):
+def train_model(model, X_train, y_train, X_test, y_test, keras_datagen, epochs=1, steps_per_epoch=None, batch_size=32):
     print("Starting training.")
+    if steps_per_epoch is None:
+        steps_per_epoch = len(X_train) / batch_size
     return model.fit_generator(my_datagen(X_train, y_train, batch_size, keras_datagen),
-                        steps_per_epoch=len(X_train) / batch_size,
+                        steps_per_epoch=steps_per_epoch,
                         epochs=epochs,
                         validation_data=(X_test,y_test),
                         use_multiprocessing=False,
                         shuffle=False)
 
 if __name__ == '__main__':
-    model = get_model()
+    model = get_model(l2_reg=0.001, lr=0.001)
     keras_datagen = ImageDataGenerator(
         featurewise_center=True,
         featurewise_std_normalization=True
     )
-    X_representative_set = HDF5Matrix(datapath, 'X', end=5000)
+    X_representative_set = HDF5Matrix(datapath, 'X', end=1000)
     print("Fitting mean and std on a representative set...")
     keras_datagen.fit(X_representative_set)
     print("Done.")
-    X_train, y_train, X_test, y_test = load_data()
-    history = train_model(model, X_train, y_train, X_test, y_test, keras_datagen, batch_size=10, epochs=5)
+    X_train, y_train, X_test, y_test = load_data(0, )
+    history = train_model(model, X_train, y_train, X_test, y_test, keras_datagen,
+                          batch_size=13,
+                          epochs=5,
+                          steps_per_epoch=1000,
+                          )

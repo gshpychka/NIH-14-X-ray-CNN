@@ -5,9 +5,9 @@ from tensorflow.python.keras.layers import Conv2D
 from tensorflow.python.keras.layers import DepthwiseConv2D
 from tensorflow.python.keras.layers import ReLU
 from tensorflow.python.keras.layers import ZeroPadding2D
+from tensorflow.keras.regularizers import l2, l1
 
-
-def _conv_block(inputs, filters, alpha, kernel=(3, 3), strides=(1, 1)):
+def _conv_block(inputs, filters, alpha, kernel=(3, 3), strides=(1, 1), l2_reg=0):
   """Adds an initial convolution layer (with batch normalization and relu6).
   Arguments:
       inputs: Input tensor of shape `(rows, cols, 3)`
@@ -49,16 +49,21 @@ def _conv_block(inputs, filters, alpha, kernel=(3, 3), strides=(1, 1)):
   Returns:
       Output tensor of block.
   """
+
+  reg = l2(l2_reg)
+  bias_reg = l1()
   channel_axis = -1
   filters = int(filters * alpha)
   x = ZeroPadding2D(padding=(1, 1), name='conv1_pad')(inputs)
   x = Conv2D(
-      filters,
-      kernel,
-      padding='valid',
-      use_bias=False,
-      strides=strides,
-      name='conv1')(x)
+        filters,
+        kernel,
+        padding='valid',
+        use_bias=True,
+        strides=strides,
+        name='conv1',
+        kernel_regularizer=reg,
+        bias_regularizer=bias_reg)(x)
   x = BatchNormalization(axis=channel_axis, name='conv1_bn')(x)
   return ReLU(6, name='conv1_relu')(x)
 
@@ -68,7 +73,8 @@ def _depthwise_conv_block(inputs,
                           alpha,
                           depth_multiplier=1,
                           strides=(1, 1),
-                          block_id=1):
+                          block_id=1,
+                          l2_reg=0):
   """Adds a depthwise convolution block.
   A depthwise convolution block consists of a depthwise conv,
   batch normalization, relu6, pointwise convolution,
@@ -112,24 +118,31 @@ def _depthwise_conv_block(inputs,
       Output tensor of block.
   """
   channel_axis = -1
+  reg = l2(l2_reg)
+  bias_reg = l1()
   pointwise_conv_filters = int(pointwise_conv_filters * alpha)
   x = ZeroPadding2D(padding=(1, 1), name='conv_pad_%d' % block_id)(inputs)
-  x = DepthwiseConv2D(  # pylint: disable=not-callable
-      (3, 3),
-      padding='valid',
-      depth_multiplier=depth_multiplier,
-      strides=strides,
-      use_bias=False,
-      name='conv_dw_%d' % block_id)(x)
+  x = DepthwiseConv2D(
+        (3, 3),
+        padding='valid',
+        depth_multiplier=depth_multiplier,
+        strides=strides,
+        use_bias=True,
+        name='conv_dw_%d' % block_id,
+        kernel_regularizer=reg,
+        bias_regularizer=bias_reg)(x)
   x = BatchNormalization(axis=channel_axis, name='conv_dw_%d_bn' % block_id)(x)
   x = ReLU(6, name='conv_dw_%d_relu' % block_id)(x)
 
   x = Conv2D(
-      pointwise_conv_filters, (1, 1),
-      padding='same',
-      use_bias=False,
-      strides=(1, 1),
-      name='conv_pw_%d' % block_id)(
+        pointwise_conv_filters, (1, 1),
+        padding='same',
+        use_bias=True,
+        strides=(1, 1),
+        name='conv_pw_%d' % block_id,
+        kernel_regularizer=reg,
+        bias_regularizer=bias_reg
+  )(
           x)
   x = BatchNormalization(axis=channel_axis, name='conv_pw_%d_bn' % block_id)(x)
   return ReLU(6, name='conv_pw_%d_relu' % block_id)(x)
