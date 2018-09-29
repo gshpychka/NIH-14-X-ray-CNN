@@ -56,10 +56,10 @@ def train_model(model, X_train, y_train, X_test, y_test, epochs=1, steps_per_epo
                         shuffle=False)
 
 if __name__ == '__main__':
-    model = get_model(reg=0, lr=0.001)
+    #model = get_model(reg=0, lr=0.001)
     X_representative_set = HDF5Matrix(datapath, 'X', end=1000)
     X_train, y_train, X_test, y_test = load_data()
-    history = train_model(model, X_train, y_train, X_test, y_test,
-                          batch_size=10,
-                          epochs=5
-                          )
+    #history = train_model(model, X_train, y_train, X_test, y_test,
+    #                      batch_size=10,
+    #                      epochs=5
+    #                      )
