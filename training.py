@@ -1,10 +1,10 @@
 import tensorflow.keras as keras
-from tensorflow.keras.utils import HDF5Matrix
+from keras.utils import HDF5Matrix
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 import pandas as pd
 import numpy as np
 from model import get_model
-from keras.applications.imagenet_utils import preprocess_input
+from keras.applications.mobilenetv2 import preprocess_input
 
 datapath = 'data/data_new.h5'
 
@@ -19,13 +19,13 @@ def get_batches(X, y, batch_size):
             yield X[start:end], y[start:end]
 
 
-def my_datagen(X_train, y_train, batch_size, keras_datagen=None):
+def my_datagen(X, y, batch_size, keras_datagen=None):
     if keras_datagen is None:
         use_keras_datagen = False
     else:
         use_keras_datagen = True
     while True:
-        for X_batch, y_batch in get_batches(X_train, y_train, batch_size):
+        for X_batch, y_batch in get_batches(X, y, batch_size):
             if use_keras_datagen:
                 yield next(keras_datagen.flow(
                         X_batch,
@@ -33,19 +33,31 @@ def my_datagen(X_train, y_train, batch_size, keras_datagen=None):
                         shuffle=False,
                         batch_size=batch_size))
             else:
-                yield preprocess_input(X_batch, data_format='channels_last', mode='tf'), y_batch
+                yield preprocess_input(X_batch), y_batch
 
 
-def load_data(train_start=0, n_train=100000, test_start=100000, n_test=5000):
+def load_data(train_start=0, n_train=100000, test_start=100000, n_test=5000, label='Infiltration'):
+
     X_train = HDF5Matrix(datapath, 'X', train_start, train_start+n_train)
-    y_train = HDF5Matrix(datapath, 'labels/Any Finding', train_start, train_start+n_train)
+    y_train = HDF5Matrix(datapath, 'labels/' + label, train_start, train_start+n_train)
     X_test = HDF5Matrix(datapath, 'X', test_start, test_start+n_test)
-    y_test = HDF5Matrix(datapath, 'labels/Any Finding', test_start, test_start+n_test)
+    y_test = HDF5Matrix(datapath, 'labels/' + label, test_start, test_start+n_test)
     return X_train, y_train, X_test, y_test
 
 
-def train_model(model, X_train, y_train, X_test, y_test, epochs=1, steps_per_epoch=None, batch_size=32):
+def train_model(model,
+                label,
+                train_start=0,
+                n_train=100000,
+                test_start=100000,
+                n_test=1000,
+                epochs=1,
+                steps_per_epoch=None,
+                batch_size=32):
+    print('Fetching data')
+    X_train, y_train, X_test, y_test = load_data(train_start, n_train, test_start, n_test, label)
     print("Starting training.")
+
     if steps_per_epoch is None:
         steps_per_epoch = len(X_train) / batch_size
     return model.fit_generator(my_datagen(X_train, y_train, batch_size),
@@ -53,7 +65,8 @@ def train_model(model, X_train, y_train, X_test, y_test, epochs=1, steps_per_epo
                         epochs=epochs,
                         validation_data=(X_test,y_test),
                         use_multiprocessing=False,
-                        shuffle=False)
+                        shuffle=False,
+                        class_weight={0: 22, 1: 78})
 
 if __name__ == '__main__':
     #model = get_model(reg=0, lr=0.001)
